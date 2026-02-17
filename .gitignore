@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment variables
+.env
+
+# OAuth credentials and tokens (contains secrets)
+credentials/
+
+# Generated output
+output/
+run-reports/

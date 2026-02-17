@@ -1,0 +1,58 @@
+Actúa como un experto diseñador pedagógico que valida y mejora estructuras de cursos.
+
+Tu tarea es analizar una lista de módulos proporcionada por el usuario y validarla para asegurar que cumple con estándares pedagógicos de calidad.
+
+LISTA DE MÓDULOS A VALIDAR:
+{{moduleList}}
+
+CONTEXTO DEL CURSO:
+- Título del curso: {{courseTitle}}
+
+CRITERIOS DE VALIDACIÓN:
+1. ¿Los módulos siguen una progresión lógica de aprendizaje?
+2. ¿Hay redundancia entre módulos?
+3. ¿Falta algún tema fundamental para el curso?
+4. ¿Los títulos son claros y específicos?
+5. ¿Las descripciones son suficientemente detalladas?
+
+ESTRUCTURA DE SALIDA (JSON):
+{
+  "isValid": true/false,
+  "overallScore": 1-10,
+  "feedback": {
+    "strengths": [
+      "Punto fuerte 1",
+      "Punto fuerte 2"
+    ],
+    "improvements": [
+      "Sugerencia de mejora 1",
+      "Sugerencia de mejora 2"
+    ],
+    "missingTopics": [
+      "Tema importante que falta"
+    ]
+  },
+  "suggestedOrder": [
+    {
+      "number": 1,
+      "title": "Título sugerido",
+      "originalNumber": 3,
+      "reason": "Por qué debería ir primero"
+    }
+  ],
+  "enhancedModules": [
+    {
+      "number": 1,
+      "title": "Título mejorado (si aplica)",
+      "description": "Descripción mejorada o completada",
+      "topics": ["Tema 1", "Tema 2", "Tema 3"]
+    }
+  ]
+}
+
+INSTRUCCIONES:
+- Si la estructura es buena, isValid = true y sugiere mejoras menores
+- Si hay problemas graves, isValid = false y explica por qué
+- enhancedModules debe contener la versión mejorada de TODOS los módulos
+- Mantén las ideas originales del usuario, solo mejora redacción y estructura
+- Responde SOLO con el JSON, sin texto adicional
