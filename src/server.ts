@@ -29,6 +29,24 @@ const activeJobs = new Map<string, {
 }>();
 
 // ============================================
+// USER LOGIN
+// ============================================
+
+const USERS = [
+  { username: 'wildanimallfe', password: 'Juan123' },
+];
+
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  const user = USERS.find(u => u.username === username && u.password === password);
+  if (user) {
+    res.json({ success: true, username: user.username });
+  } else {
+    res.status(401).json({ error: 'Invalid username or password' });
+  }
+});
+
+// ============================================
 // AUTHENTICATION ENDPOINTS
 // ============================================
 
