@@ -5,10 +5,10 @@ import { runPipeline, saveRunReport } from './pipeline/runner.js';
 import { parseIndexDocument, parseIndexContent } from './parser/index-parser.js';
 import { readFileContent, listFilesInFolder, findFolder } from './google/drive.js';
 import { isAuthenticated, getAuthUrl, exchangeCodeForTokens, deleteToken } from './google/auth.js';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { generateJSON } from './openai/client.js';
-import { getModuleGenerationPrompt, MODULE_GENERATION_SYSTEM_PROMPT } from './openai/prompts.js';
+import { getModuleGenerationPrompt, MODULE_GENERATION_SYSTEM_PROMPT, loadDefaultPrompts } from './openai/prompts.js';
 
 const app = express();
 const PORT = process.env.PORT || 3456;
@@ -152,7 +152,7 @@ app.post('/api/parse/manual', async (req, res) => {
 // Start content generation
 app.post('/api/generate', async (req, res) => {
   try {
-    const { indexFileId, rootFolderId, courseSpec } = req.body;
+    const { indexFileId, rootFolderId, courseSpec, customPrompts } = req.body;
 
     if (!indexFileId && !courseSpec) {
       return res.status(400).json({ error: 'Either indexFileId or courseSpec is required' });
@@ -188,7 +188,8 @@ app.post('/api/generate', async (req, res) => {
               job.completedTopics = progress.completed;
               job.currentTopic = progress.currentTopic || '';
             }
-          }
+          },
+          customPrompts
         );
 
         // Save report
@@ -292,10 +293,56 @@ interface GeneratedCourseStructure {
   learningOutcomes: string[];
 }
 
+// Custom prompts file path
+const CUSTOM_PROMPTS_PATH = resolve('./custom-prompts.json');
+
+// Get default prompt templates for the prompt editor
+app.get('/api/prompts/defaults', (req, res) => {
+  try {
+    const prompts = loadDefaultPrompts();
+    res.json({ success: true, prompts });
+  } catch (error: any) {
+    console.error('Failed to load default prompts:', error);
+    res.status(500).json({ error: error.message || 'Failed to load default prompts' });
+  }
+});
+
+// Get saved custom prompts
+app.get('/api/prompts/saved', (req, res) => {
+  try {
+    if (existsSync(CUSTOM_PROMPTS_PATH)) {
+      const data = readFileSync(CUSTOM_PROMPTS_PATH, 'utf-8');
+      const prompts = JSON.parse(data);
+      res.json({ success: true, prompts });
+    } else {
+      res.json({ success: true, prompts: {} });
+    }
+  } catch (error: any) {
+    console.error('Failed to load saved prompts:', error);
+    res.status(500).json({ error: error.message || 'Failed to load saved prompts' });
+  }
+});
+
+// Save custom prompts
+app.post('/api/prompts/save', (req, res) => {
+  try {
+    const { prompts } = req.body;
+    if (!prompts || typeof prompts !== 'object') {
+      return res.status(400).json({ error: 'prompts object is required' });
+    }
+    writeFileSync(CUSTOM_PROMPTS_PATH, JSON.stringify(prompts, null, 2), 'utf-8');
+    console.log('📝 Custom prompts saved');
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Failed to save custom prompts:', error);
+    res.status(500).json({ error: error.message || 'Failed to save custom prompts' });
+  }
+});
+
 // Generate module structure from course title
 app.post('/api/modules/generate', async (req, res) => {
   try {
-    const { courseTitle } = req.body;
+    const { courseTitle, customPrompts } = req.body;
 
     if (!courseTitle || typeof courseTitle !== 'string' || courseTitle.trim().length === 0) {
       return res.status(400).json({ error: 'courseTitle is required' });
@@ -303,7 +350,7 @@ app.post('/api/modules/generate', async (req, res) => {
 
     console.log(`📚 Generating module structure for: "${courseTitle}"`);
 
-    const prompt = getModuleGenerationPrompt({ courseTitle: courseTitle.trim() });
+    const prompt = getModuleGenerationPrompt({ courseTitle: courseTitle.trim() }, customPrompts?.moduleGeneration);
 
     const result = await generateJSON<GeneratedCourseStructure>(
       MODULE_GENERATION_SYSTEM_PROMPT,
@@ -439,7 +486,7 @@ app.post('/api/modules/parse', async (req, res) => {
 // Generate course content from module structure
 app.post('/api/modules/generate-content', async (req, res) => {
   try {
-    const { courseStructure, rootFolderId } = req.body;
+    const { courseStructure, rootFolderId, customPrompts } = req.body;
 
     if (!courseStructure || !courseStructure.modules || courseStructure.modules.length === 0) {
       return res.status(400).json({ error: 'courseStructure with modules is required' });
@@ -501,7 +548,8 @@ app.post('/api/modules/generate-content', async (req, res) => {
               job.completedTopics = progress.completed;
               job.currentTopic = progress.currentTopic || '';
             }
-          }
+          },
+          customPrompts
         );
 
         // Save report

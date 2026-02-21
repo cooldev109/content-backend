@@ -46,7 +46,8 @@ export interface GeneratedContent {
 export async function generateTopicContent(
   courseSpec: CourseSpec,
   topic: Topic,
-  enableMultiPass: boolean = true
+  enableMultiPass: boolean = true,
+  customPrompts?: { topicIndex?: string; topicDevelopment?: string }
 ): Promise<GeneratedContent> {
   const context: PromptContext = {
     courseName: courseSpec.courseName,
@@ -58,7 +59,7 @@ export async function generateTopicContent(
   console.log(`    📝 [Pass 1] Generating topic index...`);
 
   // Step 1: Generate topic index (JSON)
-  const topicIndexPrompt = getTopicIndexPrompt(context);
+  const topicIndexPrompt = getTopicIndexPrompt(context, customPrompts?.topicIndex);
   const topicIndex = await generateJSON<TopicIndex>(SYSTEM_PROMPT, topicIndexPrompt, {
     maxTokens: 4096,
   });
@@ -73,7 +74,7 @@ export async function generateTopicContent(
     ...context,
     topicIndex: topicIndexText,
   };
-  const topicDevelopmentPrompt = getTopicDevelopmentPrompt(developmentContext);
+  const topicDevelopmentPrompt = getTopicDevelopmentPrompt(developmentContext, customPrompts?.topicDevelopment);
   let topicDevelopment = await generateContent(SYSTEM_PROMPT, topicDevelopmentPrompt, {
     maxTokens: 8192,
   });

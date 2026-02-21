@@ -81,18 +81,29 @@ function interpolateModuleValidationPrompt(template: string, context: ModuleVali
 }
 
 /**
+ * Load all default prompt templates (for the prompt editor UI)
+ */
+export function loadDefaultPrompts(): Record<string, string> {
+  return {
+    moduleGeneration: loadLocalPrompt('module-generation'),
+    topicIndex: loadLocalPrompt('topic-index'),
+    topicDevelopment: loadLocalPrompt('topic-development'),
+  };
+}
+
+/**
  * Get the topic index generation prompt
  */
-export function getTopicIndexPrompt(context: PromptContext): string {
-  const template = loadLocalPrompt('topic-index');
+export function getTopicIndexPrompt(context: PromptContext, customTemplate?: string): string {
+  const template = customTemplate || loadLocalPrompt('topic-index');
   return interpolatePrompt(template, context);
 }
 
 /**
  * Get the topic development generation prompt
  */
-export function getTopicDevelopmentPrompt(context: PromptContext): string {
-  const template = loadLocalPrompt('topic-development');
+export function getTopicDevelopmentPrompt(context: PromptContext, customTemplate?: string): string {
+  const template = customTemplate || loadLocalPrompt('topic-development');
   return interpolatePrompt(template, context);
 }
 
@@ -107,8 +118,8 @@ export function getVoiceoverScriptPrompt(context: PromptContext): string {
 /**
  * Get the module generation prompt (from course title)
  */
-export function getModuleGenerationPrompt(context: ModuleGenerationContext): string {
-  const template = loadLocalPrompt('module-generation');
+export function getModuleGenerationPrompt(context: ModuleGenerationContext, customTemplate?: string): string {
+  const template = customTemplate || loadLocalPrompt('module-generation');
   return interpolateModuleGenerationPrompt(template, context);
 }
 

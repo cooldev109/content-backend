@@ -43,6 +43,11 @@ export interface ProgressCallback {
   }): void;
 }
 
+export interface CustomPrompts {
+  topicIndex?: string;
+  topicDevelopment?: string;
+}
+
 /**
  * Run the complete content generation pipeline
  */
@@ -50,7 +55,8 @@ export async function runPipeline(
   indexFileId: string,
   rootFolderId: string,
   providedCourseSpec?: CourseSpec,
-  onProgress?: ProgressCallback
+  onProgress?: ProgressCallback,
+  customPrompts?: CustomPrompts
 ): Promise<RunReport> {
   const report: RunReport = {
     startTime: new Date(),
@@ -128,7 +134,8 @@ export async function runPipeline(
               courseSpec,
               module.moduleNumber,
               topic,
-              topicStructure
+              topicStructure,
+              customPrompts
             );
             report.topicResults.push(result);
 
@@ -181,7 +188,8 @@ async function generateAndWriteTopic(
   courseSpec: CourseSpec,
   moduleNumber: number,
   topic: Topic,
-  topicStructure: FolderStructure['modules'][0]['topics'][0]
+  topicStructure: FolderStructure['modules'][0]['topics'][0],
+  customPrompts?: CustomPrompts
 ): Promise<TopicResult> {
   const result: TopicResult = {
     moduleNumber,
@@ -196,7 +204,7 @@ async function generateAndWriteTopic(
     console.log(`\n  🔄 Processing: ${topic.topicNumber}. ${topic.topicName}`);
 
     // Generate content
-    const content = await generateTopicContent(courseSpec, topic);
+    const content = await generateTopicContent(courseSpec, topic, true, customPrompts);
 
     // Write to docs
     await writeTopicContent(topicStructure.docs, content);
