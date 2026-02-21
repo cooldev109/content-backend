@@ -9,6 +9,7 @@ import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { generateJSON } from './openai/client.js';
 import { getModuleGenerationPrompt, MODULE_GENERATION_SYSTEM_PROMPT, loadDefaultPrompts } from './openai/prompts.js';
+import { verifyUser, generateToken, authMiddleware, createUser } from './auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3456;
@@ -32,17 +33,42 @@ const activeJobs = new Map<string, {
 // USER LOGIN
 // ============================================
 
-const USERS = [
-  { username: 'wildanimallfe', password: 'Juan123' },
-];
-
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
-  const user = USERS.find(u => u.username === username && u.password === password);
-  if (user) {
-    res.json({ success: true, username: user.username });
-  } else {
-    res.status(401).json({ error: 'Invalid username or password' });
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  try {
+    const user = await verifyUser(username, password);
+    if (user) {
+      const token = generateToken(user);
+      res.json({ success: true, username: user.username, token });
+    } else {
+      res.status(401).json({ error: 'Invalid username or password' });
+    }
+  } catch (error: any) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Create new user (protected)
+app.post('/api/users', authMiddleware, async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  try {
+    const user = await createUser(username, password);
+    res.json({ success: true, user: { id: user.id, username: user.username } });
+  } catch (error: any) {
+    if (error.code === '23505') {
+      return res.status(409).json({ error: 'Username already exists' });
+    }
+    console.error('Create user error:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
@@ -86,6 +112,22 @@ app.post('/api/auth/logout', (req, res) => {
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ============================================
+// ALL ROUTES BELOW REQUIRE AUTHENTICATION
+// ============================================
+app.use((req, res, next) => {
+  // Public routes — no token required
+  const publicPrefixes = ['/api/login', '/api/health', '/api/auth/'];
+  if (publicPrefixes.some(p => req.path === p || req.path.startsWith(p))) {
+    return next();
+  }
+  // All other /api routes require auth
+  if (req.path.startsWith('/api/')) {
+    return authMiddleware(req, res, next);
+  }
+  next();
 });
 
 // Validate configuration
